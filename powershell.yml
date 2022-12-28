@@ -1,0 +1,21 @@
+--
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Register the Microsoft RedHat repository
+    shell: curl https://packages.microsoft.com/config/rhel/7/prod.repo | sudo tee /etc/yum.repos.d/microsoft.repo
+
+  - name: Yum Powershell 
+    yum:
+      name: 
+       - powershell
+      state: present
+ 
+
+  - name: Get List of Vm's from VDC
+    shell:  pwsh -File /var/lib/jenkins/workspace/05_Security_jobs/Deploy_ssh_keys/deploy_non_prod_ssh_keys/ssh/files/vdc.ps1
+    args:
+      executable: /usr/bin/pwsh
+    register: result 
+ 

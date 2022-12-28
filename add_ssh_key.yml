@@ -1,0 +1,60 @@
+---
+- hosts: all
+  gather_facts: false
+  serial: 
+      - "20%"
+      - "30%"
+      - "50%"
+      - "100%"
+     
+  tasks:
+  - name: Make sure we have a 'wheel' group
+    group:
+      name: wheel
+      state: present
+
+  - include_vars:
+      file: vars/accounts.yml   
+  - include_vars:
+      file: vars/old_accounts_to_deprecate.yml
+
+  - name: Allow 'wheel' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+   
+  - name: "Create user accounts"
+    user:
+      name: "{{ item }}"
+      groups: "wheel"
+      create_home: yes 
+      append: yes
+      state: present
+      expires: -1
+    with_items: "{{ accounts }}"
+    notify:
+    - "Restart_sshd"
+
+  - name: "Add authorized keys"
+    authorized_key:
+      user: "{{ item }}"
+      key: "{{ lookup('file', 'files/'+ item + '.key.pub') }}"
+    with_items: "{{ accounts }}"
+
+  - name: "Remove old user accounts"
+    user:
+      name: "{{ item }}"
+      state: "absent"
+    with_items: "{{ old_accounts_to_deprecate }}"
+    notify:
+      - "Restart_sshd"
+
+  handlers:
+  - name: "Restart_sshd"
+    service:
+      name: "sshd"
+      state: "restarted" 
+...
